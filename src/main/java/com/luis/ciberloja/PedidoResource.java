@@ -166,6 +166,11 @@ public class PedidoResource {
 			@ApiResponse(responseCode = "200", description = "El pedido fue creado correctamente", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Pedido.class))),
 			@ApiResponse(responseCode = "400", description = "Error al enviar el correo de creación del pedido") })
 	public Response create(Pedido pedido) {
+		if (pedido == null) {
+			logger.error("El objeto Pedido recibido es null");
+			return Response.status(Status.BAD_REQUEST).entity("El pedido no puede ser null").build();
+		}
+		logger.info("Pedido recibido: " + pedido.toString()); // Añade esto para depurar
 		try {
 			Long id = pedidoService.create(pedido);
 			Pedido pedidoCreated = pedidoService.findBy(id);
@@ -175,10 +180,9 @@ public class PedidoResource {
 			return Response.status(Status.BAD_REQUEST).entity("Error en el proceso de creación del pedido").build();
 		} catch (MailException me) {
 			logger.error("Error al enviar el correo electrónico", me.getMessage(), me);
-			return Response.status(Status.BAD_REQUEST).entity("Error al enviar el correo de creación de peiddo")
+			return Response.status(Status.BAD_REQUEST).entity("Error al enviar el correo de creación de pedido")
 					.build();
 		}
-
 	}
 
 	@DELETE
