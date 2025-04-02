@@ -120,6 +120,7 @@ public class ClienteResource {
 			clienteDTO.setEmail(email);
 			clienteDTO.setTelefono(telefono);
 			clienteDTO.setPassword(password);
+			clienteDTO.setRol_id(1l);
 
 			// Registrar cliente y obtener su ID
 			Long id = clienteService.registrar(clienteDTO);
