@@ -1,8 +1,9 @@
 package com.luis.ciberloja;
 
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 
-
+import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
@@ -18,10 +19,17 @@ import jakarta.ws.rs.ApplicationPath;
 
 })
 
-@ApplicationPath("/api") 
+@ApplicationPath("/api")
 public class CiberLojaApplication extends ResourceConfig {
 	public CiberLojaApplication() {
-		packages(CiberLojaApplication.class.getPackage().getName());
-		register(io.swagger.v3.jaxrs2.integration.resources.OpenApiResource.class);
+		packages("com.luis.ciberloja");
+		register(MultiPartFeature.class);
+		register(OpenApiResource.class);
+
+		// Add these multipart configuration properties
+		property("jersey.config.server.multipart.location", System.getProperty("java.io.tmpdir"));
+		property("jersey.config.server.multipart.maxFileSize", "10485760"); // 10MB
+		property("jersey.config.server.multipart.maxRequestSize", "10485760"); // 10MB
+		property("jersey.config.server.multipart.fileSizeThreshold", "1048576"); // 1MB
 	}
 }
