@@ -114,7 +114,7 @@ public class ClienteResource {
 			ClienteDTO clienteDTO = new ClienteDTO();
 			clienteDTO.setNombre(nombre);
 			clienteDTO.setNickname(nickname);
-			clienteDTO.setApellido2(primerApellido);
+			clienteDTO.setApellido1(primerApellido);
 			clienteDTO.setApellido2(segundoApellido);
 			clienteDTO.setDniNie(dni);
 			clienteDTO.setEmail(email);
