@@ -96,14 +96,17 @@ public class DireccionResource {
 			@ApiResponse(responseCode = "400", description = "Datos introducidos incorrectos o incompletos"),
 			@ApiResponse(responseCode = "500", description = "Error en el proceso de actualización") })
 	public Response update(DireccionDTO direccion) {
+		// Validación inicial de los datos de entrada
 		if (direccion == null || direccion.getId() == null || direccion.getNombreVia() == null
 				|| direccion.getDirVia() == null || direccion.getLocalidadId() == null) {
 			return Response.status(Status.BAD_REQUEST).entity("Datos introducidos inválidos").build();
 		}
 
 		try {
+			// Intenta actualizar la dirección usando el servicio
 			boolean isUpdated = direccionService.update(direccion);
 			if (isUpdated) {
+				// Si la actualización fue exitosa, busca la dirección actualizada
 				DireccionDTO updatedDireccion = direccionService.findById(direccion.getId());
 				if (updatedDireccion == null) {
 					return Response.status(Status.INTERNAL_SERVER_ERROR)
@@ -111,10 +114,13 @@ public class DireccionResource {
 				}
 				return Response.status(Status.OK).entity(updatedDireccion).build();
 			} else {
+				// Si no se actualizó (probablemente porque la dirección no existe)
 				return Response.status(Status.NOT_FOUND)
 						.entity("Dirección con ID " + direccion.getId() + " no encontrada").build();
 			}
 		} catch (DataException e) {
+			// Maneja excepciones lanzadas por el servicio (por ejemplo, errores de base de
+			// datos)
 			logger.error("Error en el proceso de actualización de la dirección con ID " + direccion.getId(), e);
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
 					.entity("Error en el proceso de actualización de la dirección").build();

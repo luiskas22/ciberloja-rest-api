@@ -63,7 +63,7 @@ public class LocalidadResource {
 				logger.warn("Invalid ID provided: {}", id);
 				return Response.status(Status.BAD_REQUEST).entity("ID inválido: debe ser un número positivo").build();
 			}
-			
+
 			Localidad localidad = localidadService.findById(id);
 			if (localidad == null) {
 				logger.warn("Localidad with ID {} not found", id);
