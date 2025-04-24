@@ -79,45 +79,45 @@ public class PedidoResource {
 	@Path("/pedidos") // Explicitly define the path
 	@Produces(MediaType.APPLICATION_JSON)
 	@Operation(operationId = "findPedidosByCriteria", summary = "Búsqueda de pedidos por criteria", description = "Búsqueda de pedidos a partir de varios parámetros introducidos", responses = {
-	        @ApiResponse(responseCode = "200", description = "Pedidos encontrados", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Pedido[].class))),
-	        @ApiResponse(responseCode = "400", description = "Datos introducidos incorrectos"),
-	        @ApiResponse(responseCode = "500", description = "Error al procesar la solicitud") })
+			@ApiResponse(responseCode = "200", description = "Pedidos encontrados", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Pedido[].class))),
+			@ApiResponse(responseCode = "400", description = "Datos introducidos incorrectos"),
+			@ApiResponse(responseCode = "500", description = "Error al procesar la solicitud") })
 	public Response findByCriteria(@QueryParam("id") Long id, @QueryParam("fechaDesde") String fechaDesde,
-	        @QueryParam("fechaHasta") String fechaHasta, @QueryParam("precioDesde") Double precioDesde,
-	        @QueryParam("precioHasta") Double precioHasta, @QueryParam("clienteId") Long clienteId,
-	        @QueryParam("tipoEstadoPedidoId") Integer tipoEstadoPedidoId, @QueryParam("productoId") Long productoId,
-	        @QueryParam("descripcion") String descripcion) {
+			@QueryParam("fechaHasta") String fechaHasta, @QueryParam("precioDesde") Double precioDesde,
+			@QueryParam("precioHasta") Double precioHasta, @QueryParam("clienteId") Long clienteId,
+			@QueryParam("tipoEstadoPedidoId") Integer tipoEstadoPedidoId, @QueryParam("productoId") Long productoId,
+			@QueryParam("descripcion") String descripcion) {
 
-	    PedidoCriteria pedidoCriteria = new PedidoCriteria();
-	    pedidoCriteria.setId(id);
-	    pedidoCriteria.setPrecioDesde(precioDesde);
-	    pedidoCriteria.setPrecioHasta(precioHasta);
-	    pedidoCriteria.setClienteId(clienteId);
-	    pedidoCriteria.setTipoEstadoPedidoId(tipoEstadoPedidoId);
-	    pedidoCriteria.setProductoId(productoId);
-	    pedidoCriteria.setDescripcionProducto(descripcion);
-	    
-	    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-	    try {
-	        if (fechaDesde != null) {
-	            pedidoCriteria.setFechaDesde(formatter.parse(fechaDesde));
-	        }
-	        if (fechaHasta != null) {
-	            pedidoCriteria.setFechaHasta(formatter.parse(fechaHasta));
-	        }
-	    } catch (Exception pe) {
-	        logger.error("Error parseando la fecha: " + pe.getMessage(), pe);
-	        return Response.status(Status.BAD_REQUEST).entity("Formato de fecha inválido. Usa yyyy-MM-dd.").build();
-	    }
+		PedidoCriteria pedidoCriteria = new PedidoCriteria();
+		pedidoCriteria.setId(id);
+		pedidoCriteria.setPrecioDesde(precioDesde);
+		pedidoCriteria.setPrecioHasta(precioHasta);
+		pedidoCriteria.setClienteId(clienteId);
+		pedidoCriteria.setTipoEstadoPedidoId(tipoEstadoPedidoId);
+		pedidoCriteria.setProductoId(productoId);
+		pedidoCriteria.setDescripcionProducto(descripcion);
 
-	    try {
-	        List<Pedido> result = pedidoService.findByCriteria(pedidoCriteria, 1, Integer.MAX_VALUE).getPage();
-	        return Response.status(Status.OK).entity(result).build();
-	    } catch (DataException de) {
-	        logger.error("Data error: " + de.getMessage(), de);
-	        return Response.status(Status.INTERNAL_SERVER_ERROR)
-	                .entity("Error en el proceso de búsqueda de los pedidos").build();
-	    }
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+		try {
+			if (fechaDesde != null) {
+				pedidoCriteria.setFechaDesde(formatter.parse(fechaDesde));
+			}
+			if (fechaHasta != null) {
+				pedidoCriteria.setFechaHasta(formatter.parse(fechaHasta));
+			}
+		} catch (Exception pe) {
+			logger.error("Error parseando la fecha: " + pe.getMessage(), pe);
+			return Response.status(Status.BAD_REQUEST).entity("Formato de fecha inválido. Usa yyyy-MM-dd.").build();
+		}
+
+		try {
+			List<Pedido> result = pedidoService.findByCriteria(pedidoCriteria, 1, Integer.MAX_VALUE).getPage();
+			return Response.status(Status.OK).entity(result).build();
+		} catch (DataException de) {
+			logger.error("Data error: " + de.getMessage(), de);
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("Error en el proceso de búsqueda de los pedidos").build();
+		}
 	}
 
 	@GET
@@ -213,22 +213,44 @@ public class PedidoResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	@Operation(operationId = "updatePedido", summary = "Actualización de un pedido", description = "Actualiza todos los datos pertenecientes al pedido", responses = {
 			@ApiResponse(responseCode = "200", description = "Pedido actualizado correctamente", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Pedido.class))),
-			@ApiResponse(responseCode = "400", description = "No se pudo actualizar el pedido"),
+			@ApiResponse(responseCode = "400", description = "No se pudo actualizar el pedido debido a datos inválidos"),
+			@ApiResponse(responseCode = "404", description = "Pedido o cliente no encontrado"),
 			@ApiResponse(responseCode = "500", description = "Error interno en el proceso de actualización del pedido") })
 	public Response update(Pedido pedido) {
+		Logger logger = LogManager.getLogger(PedidoResource.class);
 
 		try {
-			if (pedidoService.update(pedido)) {
+			// Validar datos de entrada
+			if (pedido == null || pedido.getId() == null || pedido.getClienteId() == null) {
+				logger.warn("Datos inválidos para actualizar el pedido: {}", pedido);
+				return Response.status(Status.BAD_REQUEST).entity("El pedido debe incluir un ID y un clienteId válidos")
+						.build();
+			}
+
+			// Intentar actualizar el pedido
+			boolean updated = pedidoService.update(pedido);
+			if (updated) {
 				Pedido pedidoActualizado = pedidoService.findBy(pedido.getId());
-				return Response.ok().entity(pedidoActualizado).build();
+				if (pedidoActualizado == null) {
+					logger.warn("Pedido con ID {} no encontrado después de la actualización", pedido.getId());
+					return Response.status(Status.NOT_FOUND).entity("Pedido no encontrado después de la actualización")
+							.build();
+				}
+				logger.info("Pedido actualizado correctamente: {}", pedidoActualizado);
+				return Response.ok(pedidoActualizado).build();
 			} else {
+				logger.warn("No se pudo actualizar el pedido con ID {}", pedido.getId());
 				return Response.status(Status.BAD_REQUEST).entity("No se ha podido actualizar el pedido").build();
 			}
 
-		} catch (PinguelaException pe) {
-			logger.error(pe.getMessage(), pe);
+		} catch (DataException de) {
+			logger.error("Error al actualizar el pedido con ID {}: {}", pedido.getId(), de.getMessage(), de);
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
-					.entity("Error en el proceso de actualización del pedido").build();
+					.entity("Error en el proceso de actualización del pedido: " + de.getMessage()).build();
+		} catch (Exception e) {
+			logger.error("Error inesperado al actualizar el pedido con ID {}: {}", pedido.getId(), e.getMessage(), e);
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("Error inesperado en el proceso de actualización del pedido").build();
 		}
 	}
 }

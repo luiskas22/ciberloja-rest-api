@@ -131,7 +131,7 @@ public class DireccionResource {
 	@Path("/delete")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Operation(operationId = "deleteDireccion", summary = "Eliminación de una dirección", description = "Elimina una dirección a partir de su ID", responses = {
-			@ApiResponse(responseCode = "200", description = "Dirección eliminada correctamente", content = @Content(mediaType = MediaType.APPLICATION_JSON)),
+			@ApiResponse(responseCode = "200", description = "Dirección eliminada correctamente", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = DireccionDTO.class))),
 			@ApiResponse(responseCode = "400", description = "Datos introducidos inválidos"),
 			@ApiResponse(responseCode = "404", description = "Dirección no encontrada"),
 			@ApiResponse(responseCode = "500", description = "Error en el proceso de eliminación") })
