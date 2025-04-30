@@ -12,7 +12,7 @@ import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.ws.rs.ApplicationPath;
 
 @OpenAPIDefinition(info = @Info(title = "CiberLoja API", version = "1.0", description = "API para gestionar tienda ", contact = @Contact(name = "Soporte API", email = "soporte@reflevision.com", url = "https://ciberloja.com"), license = @License(name = "MIT", url = "https://opensource.org/licenses/MIT")), servers = {
-		@Server(url = "http://192.168.99.41:8080/ciberloja-rest-api/", description = "Servidor Local")
+		@Server(url = "http://192.168.99.40:8080/ciberloja-rest-api/", description = "Servidor Local")
 		// Cuando lo subais al hosting
 		// @Server(url = "https://api.thegoldenbook.com", description = "Servidor de
 		// Producción"),

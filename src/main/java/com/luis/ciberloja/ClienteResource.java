@@ -138,52 +138,45 @@ public class ClienteResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	@Operation(operationId = "autenticarCliente", summary = "Autenticación de un cliente", description = "Autenticación de un cliente introduciendo su corre electrónico y su contraseña", responses = {
-	    @ApiResponse(responseCode = "200", description = "Proceso de autenticación correcto", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ClienteDTO.class))),
-	    @ApiResponse(responseCode = "401", description = "Credenciales inválidas"),
-	    @ApiResponse(responseCode = "400", description = "Error en el proceso de autenticación") 
-	})
+			@ApiResponse(responseCode = "200", description = "Proceso de autenticación correcto", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ClienteDTO.class))),
+			@ApiResponse(responseCode = "401", description = "Credenciales inválidas"),
+			@ApiResponse(responseCode = "400", description = "Error en el proceso de autenticación") })
 	public Response autenticar(ClienteDTO credenciales) {
-	    logger.info("Intento de autenticación para: {}", credenciales.getEmail());
+		logger.info("Intento de autenticación para: {}", credenciales.getEmail());
 
-	    try {
-	        // Validate input
-	        if (credenciales.getEmail() == null || credenciales.getPassword() == null) {
-	            logger.warn("Credenciales incompletas");
-	            return Response.status(Response.Status.BAD_REQUEST)
-	                .entity(Map.of("mensaje", "Credenciales incompletas"))
-	                .build();
-	        }
+		try {
+			// Validate input
+			if (credenciales.getEmail() == null || credenciales.getPassword() == null) {
+				logger.warn("Credenciales incompletas");
+				return Response.status(Response.Status.BAD_REQUEST)
+						.entity(Map.of("mensaje", "Credenciales incompletas")).build();
+			}
 
-	        ClienteDTO clienteAutenticado = clienteService.autenticar(
-	            credenciales.getEmail(), 
-	            credenciales.getPassword()
-	        );
+			ClienteDTO clienteAutenticado = clienteService.autenticar(credenciales.getEmail(),
+					credenciales.getPassword());
 
-	        // Check if authentication failed
-	        if (clienteAutenticado == null) {
-	            logger.warn("Autenticación fallida para: {}", credenciales.getEmail());
-	            return Response.status(Response.Status.UNAUTHORIZED)
-	                .entity(Map.of("mensaje", "Credenciales inválidas"))
-	                .build();
-	        }
+			// Check if authentication failed
+			if (clienteAutenticado == null) {
+				logger.warn("Autenticación fallida para: {}", credenciales.getEmail());
+				return Response.status(Response.Status.UNAUTHORIZED).entity(Map.of("mensaje", "Credenciales inválidas"))
+						.build();
+			}
 
-	        // Optionally, remove sensitive information before returning
-	        clienteAutenticado.setPassword(null);
+			// Optionally, remove sensitive information before returning
+			clienteAutenticado.setPassword(null);
 
-	        logger.info("Autenticación exitosa para: {}", credenciales.getEmail());
-	        return Response.ok(clienteAutenticado).build();
+			logger.info("Autenticación exitosa para: {}", credenciales.getEmail());
+			return Response.ok(clienteAutenticado).build();
 
-	    } catch (PinguelaException pe) {
-	        logger.error("Error en autenticación: {}", pe.getMessage(), pe);
-	        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-	            .entity(Map.of("mensaje", "Error interno durante la autenticación"))
-	            .build();
-	    } catch (Exception e) {
-	        logger.error("Error inesperado: {}", e.getMessage(), e);
-	        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-	            .entity(Map.of("mensaje", "Error inesperado"))
-	            .build();
-	    }
+		} catch (PinguelaException pe) {
+			logger.error("Error en autenticación: {}", pe.getMessage(), pe);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+					.entity(Map.of("mensaje", "Error interno durante la autenticación")).build();
+		} catch (Exception e) {
+			logger.error("Error inesperado: {}", e.getMessage(), e);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(Map.of("mensaje", "Error inesperado"))
+					.build();
+		}
 	}
 
 	@POST
@@ -214,4 +207,82 @@ public class ClienteResource {
 		}
 	}
 
+	@POST
+	@Path("/forgot-password")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	@Operation(operationId = "forgotPassword", summary = "Solicitud de restablecimiento de contraseña", description = "Genera un token de restablecimiento de contraseña y envía un correo electrónico con un enlace para restablecer la contraseña", responses = {
+			@ApiResponse(responseCode = "200", description = "Enlace de restablecimiento enviado correctamente", content = @Content(mediaType = MediaType.APPLICATION_JSON)),
+			@ApiResponse(responseCode = "400", description = "Correo electrónico inválido o no registrado"),
+			@ApiResponse(responseCode = "500", description = "Error interno al procesar la solicitud") })
+	public Response forgotPassword(Map<String, String> request) {
+		String email = request.get("email");
+		logger.info("Solicitud de restablecimiento de contraseña para: {}", email);
+
+		if (email == null || email.trim().isEmpty()) {
+			logger.warn("Correo electrónico no proporcionado");
+			return Response.status(Status.BAD_REQUEST).entity(Map.of("mensaje", "El correo electrónico es obligatorio"))
+					.build();
+		}
+
+		try {
+			String token = clienteService.generatePasswordResetToken(email);
+			if (token != null) {
+				logger.info("Enlace de restablecimiento enviado a: {}", email);
+				return Response.status(Status.OK)
+						.entity(Map.of("mensaje", "Enlace de restablecimiento enviado correctamente")).build();
+			} else {
+				logger.warn("Correo electrónico no encontrado: {}", email);
+				return Response.status(Status.BAD_REQUEST).entity(Map.of("mensaje", "Correo electrónico no registrado"))
+						.build();
+			}
+		} catch (DataException e) {
+			logger.error("Error al procesar solicitud de restablecimiento para {}: {}", email, e.getMessage(), e);
+			return Response.status(Status.BAD_REQUEST).entity(Map.of("mensaje", e.getMessage())).build();
+		} catch (Exception e) {
+			logger.error("Error inesperado al procesar solicitud de restablecimiento: {}", e.getMessage(), e);
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity(Map.of("mensaje", "Error interno al procesar la solicitud")).build();
+		}
+	}
+
+	@POST
+	@Path("/reset-password")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	@Operation(operationId = "resetPassword", summary = "Restablecimiento de contraseña", description = "Valida un token de restablecimiento y actualiza la contraseña del cliente", responses = {
+			@ApiResponse(responseCode = "200", description = "Contraseña actualizada correctamente", content = @Content(mediaType = MediaType.APPLICATION_JSON)),
+			@ApiResponse(responseCode = "400", description = "Token inválido o datos incorrectos"),
+			@ApiResponse(responseCode = "500", description = "Error interno al procesar la solicitud") })
+	public Response resetPassword(Map<String, String> request) {
+		String token = request.get("token");
+		String newPassword = request.get("newPassword");
+		logger.info("Intento de restablecimiento de contraseña con token: {}", token);
+
+		if (token == null || token.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty()) {
+			logger.warn("Token o nueva contraseña no proporcionados");
+			return Response.status(Status.BAD_REQUEST)
+					.entity(Map.of("mensaje", "El token y la nueva contraseña son obligatorios")).build();
+		}
+
+		try {
+			boolean updated = clienteService.validateAndUpdatePassword(token, newPassword);
+			if (updated) {
+				logger.info("Contraseña actualizada correctamente para token: {}", token);
+				return Response.status(Status.OK).entity(Map.of("mensaje", "Contraseña actualizada correctamente"))
+						.build();
+			} else {
+				logger.warn("No se pudo actualizar la contraseña para token: {}", token);
+				return Response.status(Status.BAD_REQUEST)
+						.entity(Map.of("mensaje", "No se pudo actualizar la contraseña")).build();
+			}
+		} catch (DataException e) {
+			logger.error("Error al restablecer contraseña: {}", e.getMessage(), e);
+			return Response.status(Status.BAD_REQUEST).entity(Map.of("mensaje", e.getMessage())).build();
+		} catch (Exception e) {
+			logger.error("Error inesperado al restablecer contraseña: {}", e.getMessage(), e);
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity(Map.of("mensaje", "Error interno al procesar la solicitud")).build();
+		}
+	}
 }
