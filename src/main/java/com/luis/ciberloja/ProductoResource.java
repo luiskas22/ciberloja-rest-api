@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +15,7 @@ import com.luis.ciberloja.model.ProductoDTO;
 import com.luis.ciberloja.model.Results;
 import com.luis.ciberloja.service.ProductoService;
 import com.luis.ciberloja.service.impl.ProductoServiceImpl;
+import com.luis.ciberloja.soap.SoapServiceIntegration;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,7 +39,10 @@ import jakarta.ws.rs.core.Response.Status;
 @Path("/producto")
 public class ProductoResource {
 	private ProductoService productoService = null;
+	private SoapServiceIntegration soapClientService = null;
 	private static Logger logger = LogManager.getLogger(ProductoResource.class);
+	private static final String SOAP_ENDPOINT = "https://ns4.ciberloja.com:8081/website.asmx?WSDL"; // Replace with
+																									// actual endpoint
 
 	public ProductoResource() {
 		productoService = new ProductoServiceImpl();
@@ -92,7 +97,6 @@ public class ProductoResource {
 			@QueryParam("nombreUnidadMedida") String nombreUnidadMedida) {
 
 		try {
-
 			ProductoCriteria criteria = new ProductoCriteria();
 
 			criteria.setId(id);
@@ -133,7 +137,7 @@ public class ProductoResource {
 			@Parameter(description = "Nombre del producto", required = true) @FormParam("nombre") String nombre,
 			@Parameter(description = "Descripción del producto") @FormParam("descripcion") String descripcion,
 			@Parameter(description = "Precio del producto", required = true) @FormParam("precio") Double precio,
-			@Parameter(description = "Stock disponible del producto", required = true) @FormParam("stockDisponible") Integer stockDisponible,
+			@Parameter(description = "Stock disponible del producto", required = true) @FormParam("stockDisponible") Double stockDisponible,
 			@Parameter(description = "ID de la categoría", required = true) @FormParam("idCategoria") Long idCategoria,
 			@Parameter(description = "ID de la marca", required = true) @FormParam("idMarca") Long idMarca,
 			@Parameter(description = "ID de la unidad de medida", required = true) @FormParam("idUnidadMedida") Long idUnidadMedida) {
@@ -151,12 +155,8 @@ public class ProductoResource {
 			// Crear el DTO del producto
 			ProductoDTO producto = new ProductoDTO();
 			producto.setNombre(nombre);
-			producto.setDescripcion(descripcion); // Puede ser null, no requiere validación estricta
 			producto.setPrecio(precio);
 			producto.setStockDisponible(stockDisponible);
-			producto.setIdCategoria(idCategoria);
-			producto.setIdMarca(idMarca);
-			producto.setIdUnidadMedida(idUnidadMedida);
 
 			// Crear el producto en el DAO
 			Long id = productoService.create(producto);
@@ -212,12 +212,8 @@ public class ProductoResource {
 
 			// Actualizar los valores
 			existingProducto.setNombre(productoDTO.getNombre());
-			existingProducto.setDescripcion(productoDTO.getDescripcion());
 			existingProducto.setPrecio(productoDTO.getPrecio());
 			existingProducto.setStockDisponible(productoDTO.getStockDisponible());
-			existingProducto.setIdCategoria(productoDTO.getIdCategoria());
-			existingProducto.setIdMarca(productoDTO.getIdMarca());
-			existingProducto.setIdUnidadMedida(productoDTO.getIdUnidadMedida());
 
 			// Guardar la actualización
 			boolean updated = productoService.update(existingProducto);
@@ -265,6 +261,56 @@ public class ProductoResource {
 			logger.error("Error al eliminar el producto con ID: " + id, e);
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
 					.entity("Ha ocurrido un error interno al eliminar el producto: " + e.getMessage()).build();
+		}
+	}
+
+	@POST
+	@Path("/sync-soap")
+	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response syncProductosFromSoap(@FormParam("empresa") String empresa,
+			@FormParam("utilizador") String utilizador, @FormParam("password") String password) {
+
+		try {
+			logger.info("Iniciando sincronización de productos desde el servicio SOAP");
+
+			// Validar credenciales
+			if (empresa == null || utilizador == null || password == null || empresa.trim().isEmpty()
+					|| utilizador.trim().isEmpty() || password.trim().isEmpty()) {
+				logger.warn("Credenciales inválidas o incompletas");
+				return Response.status(Status.BAD_REQUEST).entity("Credenciales inválidas o incompletas").build();
+			}
+
+			// Try first with SoapServiceIntegration
+			List<ProductoDTO> productos = null;
+			try {
+				logger.info("Intentando con SoapServiceIntegration");
+				SoapServiceIntegration soapService = new SoapServiceIntegration(SOAP_ENDPOINT, empresa, utilizador,
+						password);
+				productos = soapService.getArtigosCiberlojaSite();
+			} catch (Exception e) {
+				logger.warn("Error con SoapServiceIntegration: {}", e.getMessage());
+			}
+
+			// Check if products were found
+			if (productos == null || productos.isEmpty()) {
+				logger.warn("No se encontraron productos en el servicio SOAP");
+				return Response.status(Status.NOT_FOUND).entity("No se encontraron productos en el servicio SOAP")
+						.build();
+			}
+
+			// Wrap the list in a Results object for the response
+			Results<ProductoDTO> resultados = new Results<>();
+			resultados.setPage(productos);
+			resultados.setTotal(productos.size());
+
+			logger.info("Sincronización exitosa: {} productos obtenidos", resultados.getTotal());
+			return Response.status(Status.OK).entity(resultados).build();
+
+		} catch (Exception e) {
+			logger.error("Error al sincronizar productos desde el servicio SOAP: {}", e.getMessage(), e);
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("Error al sincronizar productos desde el servicio SOAP: " + e.getMessage()).build();
 		}
 	}
 }
