@@ -44,12 +44,12 @@ public class FileResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Subir una imagen para un producto", description = "Sube una imagen asociada a un producto específico usando su ID.")
     public Response uploadImage(
-            @Parameter(description = "ID del producto al que se subirá la imagen", required = true) @PathParam("productoId") Long productoId,
+            @Parameter(description = "ID del producto al que se subirá la imagen", required = true) @PathParam("productoId") String productoId,
             @Parameter(description = "Archivo de imagen a subir", required = true) @FormDataParam("file") InputStream fileInputStream,
             @FormDataParam("file") FormDataContentDisposition fileDetail) {
 
         try {
-            if (productoId == null || productoId <= 0) {
+            if (productoId == null) {
                 return Response.status(Status.BAD_REQUEST).entity("ID de producto inválido").build();
             }
             if (fileInputStream == null) {
@@ -72,9 +72,9 @@ public class FileResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Obtener imágenes por ID de producto", description = "Recupera la lista de URLs de imágenes asociadas a un producto por su ID.")
     public Response getImagesByProductoId(
-            @Parameter(description = "ID del producto para buscar sus imágenes", required = true) @PathParam("productoId") Long productoId) {
+            @Parameter(description = "ID del producto para buscar sus imágenes", required = true) @PathParam("productoId") String productoId) {
         try {
-            if (productoId == null || productoId <= 0) {
+            if (productoId == null) {
                 logger.warn("ID de producto inválido: {}", productoId);
                 return Response.status(Status.BAD_REQUEST).entity("El ID del producto debe ser un número positivo").build();
             }
@@ -94,7 +94,7 @@ public class FileResource {
     @Produces("image/*")
     @Operation(summary = "Servir imagen de producto", description = "Devuelve el archivo de imagen para un producto específico.")
     public Response getImageFile(
-            @Parameter(description = "ID del producto", required = true) @PathParam("productoId") Long productoId,
+            @Parameter(description = "ID del producto", required = true) @PathParam("productoId") String productoId,
             @Parameter(description = "Nombre del archivo de imagen", required = true) @PathParam("fileName") String fileName) {
         try {
             String basePath = ConfigurationParametersManager.getParameterValue("base.image.path");
@@ -111,7 +111,7 @@ public class FileResource {
         }
     }
 
-    private List<String> getImageUrls(Long productoId) {
+    private List<String> getImageUrls(String productoId) {
         List<File> images = fileService.getImagesByProductoId(productoId);
         return images.stream()
                 .map(file -> "/ciberloja-rest-api/api/file/images/" + productoId + "/" + file.getName())

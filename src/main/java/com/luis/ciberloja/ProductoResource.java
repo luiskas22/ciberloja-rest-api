@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,6 +18,7 @@ import com.luis.ciberloja.model.Results;
 import com.luis.ciberloja.service.ProductoService;
 import com.luis.ciberloja.service.impl.ProductoServiceImpl;
 import com.luis.ciberloja.soap.SoapServiceIntegration;
+import com.mysql.cj.Query;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -264,39 +267,64 @@ public class ProductoResource {
 		}
 	}
 
-	@POST
+	@GET
 	@Path("/sync-soap")
-	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response syncProductosFromSoap(@FormParam("empresa") String empresa,
-			@FormParam("utilizador") String utilizador, @FormParam("password") String password) {
+	@Operation(summary = "Buscar un producto", operationId = "syncProductosFromSoap", description = "Este endpoint permite buscar un producto del sistema ", responses = {
+			@ApiResponse(responseCode = "200", description = "Producto buscado exitosamente", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Results.class))),
+			@ApiResponse(responseCode = "404", description = "Producto no encontrado"),
+			@ApiResponse(responseCode = "500", description = "Error interno en el servidor al intentar buscar el producto") })
+	public Response syncProductosFromSoap(@QueryParam("empresa") String empresa,
+			@QueryParam("utilizador") String utilizador, @QueryParam("password") String password,
+			@QueryParam("descricao") String nombre, @QueryParam("PVP3Min") Double precioMin,
+			@QueryParam("PVP3Max") Double precioMax, @QueryParam("StockMin") Double stockMin,
+			@QueryParam("StockMax") Double stockMax) {
 
 		try {
-			logger.info("Iniciando sincronización de productos desde el servicio SOAP");
+			logger.info(
+					"Iniciando sincronización de productos desde el servicio SOAP con filtros: nombre={}, precioMin={}, precioMax={}, stockMin={}, stockMax={}",
+					nombre, precioMin, precioMax, stockMin, stockMax);
 
-			// Validar credenciales
+			// Validate credentials
 			if (empresa == null || utilizador == null || password == null || empresa.trim().isEmpty()
 					|| utilizador.trim().isEmpty() || password.trim().isEmpty()) {
 				logger.warn("Credenciales inválidas o incompletas");
 				return Response.status(Status.BAD_REQUEST).entity("Credenciales inválidas o incompletas").build();
 			}
 
-			// Try first with SoapServiceIntegration
-			List<ProductoDTO> productos = null;
+			// Validate filter parameters
+			if (precioMin != null && precioMax != null && precioMin > precioMax) {
+				logger.warn("precioMin ({}) no puede ser mayor que precioMax ({})", precioMin, precioMax);
+				return Response.status(Status.BAD_REQUEST).entity("precioMin no puede ser mayor que precioMax").build();
+			}
+			if (stockMin != null && stockMax != null && stockMin > stockMax) {
+				logger.warn("stockMin ({}) no puede ser mayor que stockMax ({})", stockMin, stockMax);
+				return Response.status(Status.BAD_REQUEST).entity("stockMin no puede ser mayor que stockMax").build();
+			}
+			// Fetch products from SOAP service
+			List<ProductoDTO> productos;
 			try {
-				logger.info("Intentando con SoapServiceIntegration");
 				SoapServiceIntegration soapService = new SoapServiceIntegration(SOAP_ENDPOINT, empresa, utilizador,
 						password);
 				productos = soapService.getArtigosCiberlojaSite();
 			} catch (Exception e) {
-				logger.warn("Error con SoapServiceIntegration: {}", e.getMessage());
+				logger.error("Error al obtener productos del servicio SOAP: {}", e.getMessage(), e);
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("Error al obtener productos del servicio SOAP: " + e.getMessage()).build();
 			}
 
+			// Apply filters
+			productos = productos.stream()
+					.filter(p -> nombre == null || p.getNombre().toLowerCase().contains(nombre.toLowerCase()))
+					.filter(p -> precioMin == null || p.getPrecio() >= precioMin)
+					.filter(p -> precioMax == null || p.getPrecio() <= precioMax)
+					.filter(p -> stockMin == null || p.getStockDisponible() >= stockMin)
+					.filter(p -> stockMax == null || p.getStockDisponible() <= stockMax).collect(Collectors.toList());
+
 			// Check if products were found
-			if (productos == null || productos.isEmpty()) {
-				logger.warn("No se encontraron productos en el servicio SOAP");
-				return Response.status(Status.NOT_FOUND).entity("No se encontraron productos en el servicio SOAP")
-						.build();
+			if (productos.isEmpty()) {
+				logger.warn("No se encontraron productos que coincidan con los filtros");
+				return Response.status(Status.NOT_FOUND).entity("No se encontraron productos").build();
 			}
 
 			// Wrap the list in a Results object for the response
@@ -311,6 +339,67 @@ public class ProductoResource {
 			logger.error("Error al sincronizar productos desde el servicio SOAP: {}", e.getMessage(), e);
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
 					.entity("Error al sincronizar productos desde el servicio SOAP: " + e.getMessage()).build();
+		}
+	}
+
+	@GET
+	@Path("/sync-soap/findById")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Operation(summary = "Buscar un producto por ID", operationId = "findProductoByIdFromSoap", description = "Este endpoint permite buscar un producto específico por su ID desde el sistema.", responses = {
+			@ApiResponse(responseCode = "200", description = "Producto encontrado exitosamente", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ProductoDTO.class))),
+			@ApiResponse(responseCode = "400", description = "Credenciales inválidas o ID inválido"),
+			@ApiResponse(responseCode = "404", description = "Producto no encontrado"),
+			@ApiResponse(responseCode = "500", description = "Error interno en el servidor al intentar buscar el producto") })
+	public Response findProductoByIdFromSoap(@QueryParam("empresa") String empresa,
+			@QueryParam("utilizador") String utilizador, @QueryParam("password") String password,
+			@QueryParam("id") String id) {
+
+		try {
+			logger.info("Iniciando búsqueda de producto por ID: id={}", id);
+
+			// Validate credentials
+			if (empresa == null || utilizador == null || password == null || empresa.trim().isEmpty()
+					|| utilizador.trim().isEmpty() || password.trim().isEmpty()) {
+				logger.warn("Credenciales inválidas o incompletas");
+				return Response.status(Status.BAD_REQUEST).entity("Credenciales inválidas o incompletas").build();
+			}
+
+			// Validate ID
+			if (id == null || id.trim().isEmpty()) {
+				logger.warn("ID del producto no proporcionado o inválido");
+				return Response.status(Status.BAD_REQUEST).entity("ID del producto no proporcionado o inválido")
+						.build();
+			}
+
+			// Fetch products from SOAP service
+			List<ProductoDTO> productos;
+			try {
+				SoapServiceIntegration soapService = new SoapServiceIntegration(SOAP_ENDPOINT, empresa, utilizador,
+						password);
+				productos = soapService.getArtigosCiberlojaSite();
+			} catch (Exception e) {
+				logger.error("Error al obtener productos del servicio SOAP: {}", e.getMessage(), e);
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("Error al obtener productos del servicio SOAP: " + e.getMessage()).build();
+			}
+
+			// Find product by ID
+			Optional<ProductoDTO> producto = productos.stream().filter(p -> p.getId().equals(id)).findFirst();
+
+			// Check if product was found
+			if (producto.isEmpty()) {
+				logger.warn("No se encontró un producto con ID: {}", id);
+				return Response.status(Status.NOT_FOUND).entity("No se encontró un producto con el ID proporcionado")
+						.build();
+			}
+
+			logger.info("Producto encontrado exitosamente: id={}", id);
+			return Response.status(Status.OK).entity(producto.get()).build();
+
+		} catch (Exception e) {
+			logger.error("Error al buscar producto por ID: {}", e.getMessage(), e);
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("Error al buscar producto por ID: " + e.getMessage()).build();
 		}
 	}
 }
