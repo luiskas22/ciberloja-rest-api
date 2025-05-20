@@ -85,7 +85,7 @@ public class PedidoResource {
 	public Response findByCriteria(@QueryParam("id") Long id, @QueryParam("fechaDesde") String fechaDesde,
 			@QueryParam("fechaHasta") String fechaHasta, @QueryParam("precioDesde") Double precioDesde,
 			@QueryParam("precioHasta") Double precioHasta, @QueryParam("clienteId") Long clienteId,
-			@QueryParam("tipoEstadoPedidoId") Integer tipoEstadoPedidoId, @QueryParam("productoId") Long productoId,
+			@QueryParam("tipoEstadoPedidoId") Integer tipoEstadoPedidoId, @QueryParam("productoId") String productoId,
 			@QueryParam("descripcion") String descripcion) {
 
 		PedidoCriteria pedidoCriteria = new PedidoCriteria();

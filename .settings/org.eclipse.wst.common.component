@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?><project-modules id="moduleCoreId" project-version="1.5.0">
-                                    
+                                                    
+    
+    
+    
+    
     
     
     
@@ -8,7 +12,11 @@
     
     
     <wb-module deploy-name="ciberloja-rest-api">
-                                                                        
+                                                                                                        
+        
+        
+        
+        
         
         
         
@@ -17,7 +25,11 @@
         
         
         <wb-resource deploy-path="/" source-path="/target/m2e-wtp/web-resources"/>
-                                                                        
+                                                                                                        
+        
+        
+        
+        
         
         
         
@@ -26,7 +38,11 @@
         
         
         <wb-resource deploy-path="/" source-path="/src/main/webapp" tag="defaultRootSource"/>
-                                                                        
+                                                                                                        
+        
+        
+        
+        
         
         
         
@@ -38,7 +54,11 @@
         <dependent-module archiveName="ciberloja-1.0-SNAPSHOT.jar" deploy-path="/WEB-INF/lib" handle="module:/resource/ciberloja/ciberloja">
             <dependency-type>uses</dependency-type>
         </dependent-module>
-                                                                        
+                                                                                                        
+        
+        
+        
+        
         
         
         
@@ -47,7 +67,11 @@
         
         
         <property name="context-root" value="ciberloja-rest-api"/>
-                                                                        
+                                                                                                        
+        
+        
+        
+        
         
         
         
@@ -56,7 +80,11 @@
         
         
         <property name="java-output-path" value="/ciberloja-rest-api/target/classes"/>
-                                                                    
+                                                                                                    
+    
+    
+    
+    
     
     
     
@@ -65,7 +93,11 @@
     
     
     </wb-module>
-                                
+                                                
+
+
+
+
 
 
 

@@ -1,30 +1,26 @@
 package com.luis.ciberloja;
 
-import java.io.File;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Component;
 
 import com.luis.ciberloja.model.ProductoCriteria;
 import com.luis.ciberloja.model.ProductoDTO;
 import com.luis.ciberloja.model.Results;
 import com.luis.ciberloja.service.ProductoService;
+import com.luis.ciberloja.service.impl.ArtigosCiberlojaImpl;
 import com.luis.ciberloja.service.impl.ProductoServiceImpl;
-import com.luis.ciberloja.soap.SoapServiceIntegration;
-import com.mysql.cj.Query;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.FormParam;
@@ -39,13 +35,15 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
+@Component
 @Path("/producto")
 public class ProductoResource {
-	private ProductoService productoService = null;
-	private SoapServiceIntegration soapClientService = null;
+
 	private static Logger logger = LogManager.getLogger(ProductoResource.class);
-	private static final String SOAP_ENDPOINT = "https://ns4.ciberloja.com:8081/website.asmx?WSDL"; // Replace with
-																									// actual endpoint
+
+	private final ProductoService productoService;
+	@Inject
+	private final ArtigosCiberlojaImpl soapClientService = null;
 
 	public ProductoResource() {
 		productoService = new ProductoServiceImpl();
@@ -59,7 +57,7 @@ public class ProductoResource {
 			@ApiResponse(responseCode = "404", description = "producto no encontrado"),
 			@ApiResponse(responseCode = "500", description = "Error interno en el servidor al intentar obtener la producto") })
 	public Response findById(
-			@Parameter(description = "ID del producto a buscar", required = true) @PathParam("id") Long id) {
+			@Parameter(description = "ID del producto a buscar", required = true) @PathParam("id") String id) {
 
 		try {
 			logger.info("Buscando producto con ID: " + id);
@@ -92,7 +90,7 @@ public class ProductoResource {
 			@ApiResponse(responseCode = "400", description = "Criterios de búsqueda no proporcionados o inválidos"),
 			@ApiResponse(responseCode = "404", description = "No se encontraron productos con los criterios proporcionados"),
 			@ApiResponse(responseCode = "500", description = "Error interno en el servidor al procesar la búsqueda") })
-	public Response findByCriteria(@QueryParam("id") Long id, @QueryParam("nombre") String nombre,
+	public Response findByCriteria(@QueryParam("id") String id, @QueryParam("nombre") String nombre,
 			@QueryParam("descripcion") String descripcion, @QueryParam("precioMin") Double precioMin,
 			@QueryParam("precioMax") Double precioMax, @QueryParam("stockMin") Integer stockMin,
 			@QueryParam("stockMax") Integer stockMax, @QueryParam("nombreCategoria") String nombreCategoria,
@@ -162,7 +160,7 @@ public class ProductoResource {
 			producto.setStockDisponible(stockDisponible);
 
 			// Crear el producto en el DAO
-			Long id = productoService.create(producto);
+			String id = productoService.create(producto);
 			logger.info("Producto creado exitosamente con ID: " + id);
 			return Response.status(Status.OK).entity(producto).build();
 		} catch (DataException e) {
@@ -186,7 +184,7 @@ public class ProductoResource {
 			@ApiResponse(responseCode = "404", description = "Producto no encontrado"),
 			@ApiResponse(responseCode = "500", description = "Error interno en el servidor al intentar actualizar el producto") })
 	public Response updateProducto(
-			@Parameter(description = "ID del producto a actualizar", required = true) @PathParam("id") Long id,
+			@Parameter(description = "ID del producto a actualizar", required = true) @PathParam("id") String id,
 			@Parameter(description = "Objeto ProductoDTO con los nuevos datos", required = true) ProductoDTO productoDTO) {
 
 		try {
@@ -244,7 +242,7 @@ public class ProductoResource {
 			@ApiResponse(responseCode = "404", description = "Producto no encontrado"),
 			@ApiResponse(responseCode = "500", description = "Error interno en el servidor al intentar eliminar el producto") })
 	public Response deleteProducto(
-			@Parameter(description = "ID del producto a eliminar", required = true) @PathParam("id") Long id) {
+			@Parameter(description = "ID del producto a eliminar", required = true) @PathParam("id") String id) {
 
 		try {
 			logger.info("Intentando eliminar el producto con ID: " + id);
@@ -304,9 +302,8 @@ public class ProductoResource {
 			// Fetch products from SOAP service
 			List<ProductoDTO> productos;
 			try {
-				SoapServiceIntegration soapService = new SoapServiceIntegration(SOAP_ENDPOINT, empresa, utilizador,
-						password);
-				productos = soapService.getArtigosCiberlojaSite();
+
+				productos = soapClientService.getArtigosCiberlojaSite();
 			} catch (Exception e) {
 				logger.error("Error al obtener productos del servicio SOAP: {}", e.getMessage(), e);
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
@@ -374,9 +371,8 @@ public class ProductoResource {
 			// Fetch products from SOAP service
 			List<ProductoDTO> productos;
 			try {
-				SoapServiceIntegration soapService = new SoapServiceIntegration(SOAP_ENDPOINT, empresa, utilizador,
-						password);
-				productos = soapService.getArtigosCiberlojaSite();
+
+				productos = soapClientService.getArtigosCiberlojaSite();
 			} catch (Exception e) {
 				logger.error("Error al obtener productos del servicio SOAP: {}", e.getMessage(), e);
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
