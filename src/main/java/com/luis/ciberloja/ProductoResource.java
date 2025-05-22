@@ -6,11 +6,14 @@ import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.luis.ciberloja.model.ProductoCriteria;
 import com.luis.ciberloja.model.ProductoDTO;
 import com.luis.ciberloja.model.Results;
+import com.luis.ciberloja.service.ArtigosCiberloja;
 import com.luis.ciberloja.service.ProductoService;
 import com.luis.ciberloja.service.impl.ArtigosCiberlojaImpl;
 import com.luis.ciberloja.service.impl.ProductoServiceImpl;
@@ -20,7 +23,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.FormParam;
@@ -35,20 +37,22 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
-@Component
+@RestController
 @Path("/producto")
 public class ProductoResource {
 
 	private static Logger logger = LogManager.getLogger(ProductoResource.class);
 
-	private final ProductoService productoService;
-	@Inject
-	private final ArtigosCiberlojaImpl soapClientService = null;
+	
+	private ProductoService productoService;
+	
+	private ArtigosCiberloja soapClientService;
 
 	public ProductoResource() {
-		productoService = new ProductoServiceImpl();
+		soapClientService= new ArtigosCiberlojaImpl();
+		productoService=new ProductoServiceImpl();
 	}
-
+	
 	@GET
 	@Path("/{id}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -100,16 +104,16 @@ public class ProductoResource {
 		try {
 			ProductoCriteria criteria = new ProductoCriteria();
 
-			criteria.setId(id);
-			criteria.setNombre(nombre);
-			criteria.setDescripcion(descripcion);
-			criteria.setPrecioMin(precioMin);
-			criteria.setPrecioMax(precioMax);
-			criteria.setStockMin(stockMin);
-			criteria.setStockMax(stockMax);
-			criteria.setNombreCategoria(nombreCategoria);
-			criteria.setNombreMarca(nombreMarca);
-			criteria.setNombreUnidadMedida(nombreUnidadMedida);
+//			criteria.setId(id);
+//			criteria.setNombre(nombre);
+//			criteria.setDescripcion(descripcion);
+//			criteria.setPrecioMin(precioMin);
+//			criteria.setPrecioMax(precioMax);
+//			criteria.setStockMin(stockMin);
+//			criteria.setStockMax(stockMax);
+//			criteria.setNombreCategoria(nombreCategoria);
+//			criteria.setNombreMarca(nombreMarca);
+//			criteria.setNombreUnidadMedida(nombreUnidadMedida);
 
 			Results<ProductoDTO> resultados = productoService.findBy(criteria, 1, Integer.MAX_VALUE);
 
