@@ -44,16 +44,15 @@ public class ProductoResource {
 
 	private static Logger logger = LogManager.getLogger(ProductoResource.class);
 
-	
 	private ProductoService productoService;
-	
+
 	private ArtigosCiberloja soapClientService;
 
 	public ProductoResource() {
-		soapClientService= new ArtigosCiberlojaImpl();
-		productoService=new ProductoServiceImpl();
+		soapClientService = new ArtigosCiberlojaImpl();
+		productoService = new ProductoServiceImpl();
 	}
-	
+
 	@GET
 	@Path("/{id}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -88,81 +87,69 @@ public class ProductoResource {
 	}
 
 	@GET
-    @Path("/search")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Operation(
-        summary = "Buscar productos por criterios",
-        operationId = "findProductosByCriteria",
-        description = "Este endpoint permite buscar productos aplicando filtros opcionales como ID, nombre, rango de precios, cantidad de unidades, y localización.",
-        responses = {
-            @ApiResponse(
-                responseCode = "200",
-                description = "Productos encontrados",
-                content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Results.class))
-            ),
-            @ApiResponse(responseCode = "400", description = "Criterios de búsqueda no proporcionados o inválidos"),
-            @ApiResponse(responseCode = "404", description = "No se encontraron productos con los criterios proporcionados"),
-            @ApiResponse(responseCode = "500", description = "Error interno en el servidor al procesar la búsqueda")
-        }
-    )
-    public Response findByCriteria(
-            @QueryParam("id") String id,
-            @QueryParam("descripcion") String descripcion,
-            @QueryParam("precioMin") Double precioMin,
-            @QueryParam("precioMax") Double precioMax,
-            @QueryParam("stockMin") Integer stockMin,
-            @QueryParam("stockMax") Integer stockMax,
-            @QueryParam("page") @DefaultValue("1") int page,
-            @QueryParam("size") @DefaultValue("30") int size) {
+	@Path("/search")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Operation(summary = "Buscar productos por criterios", operationId = "findProductosByCriteria", description = "Este endpoint permite buscar productos aplicando filtros opcionales como ID, nombre, rango de precios, cantidad de unidades, y localización.", responses = {
+			@ApiResponse(responseCode = "200", description = "Productos encontrados", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Results.class))),
+			@ApiResponse(responseCode = "400", description = "Criterios de búsqueda no proporcionados o inválidos"),
+			@ApiResponse(responseCode = "404", description = "No se encontraron productos con los criterios proporcionados"),
+			@ApiResponse(responseCode = "500", description = "Error interno en el servidor al procesar la búsqueda") })
+	public Response findByCriteria(@QueryParam("id") String id, @QueryParam("descripcion") String descripcion,
+			@QueryParam("precioMin") Double precioMin, @QueryParam("precioMax") Double precioMax,
+			@QueryParam("stockMin") Integer stockMin, @QueryParam("stockMax") Integer stockMax,
+			@QueryParam("familia") String familia,
+			@QueryParam("page") @DefaultValue("1") int page, @QueryParam("size") @DefaultValue("30") int size) {
 
-        try {
-            if (page < 1 || size < 1) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Parámetros de paginación inválidos: page y size deben ser mayores que 0.").build();
-            }
+		try {
+			if (page < 1 || size < 1) {
+				return Response.status(Response.Status.BAD_REQUEST)
+						.entity("Parámetros de paginación inválidos: page y size deben ser mayores que 0.").build();
+			}
 
-            ProductoCriteria criteria = new ProductoCriteria();
+			ProductoCriteria criteria = new ProductoCriteria();
 
-            if (id != null && !id.trim().isEmpty()) {
-                criteria.setArtigo(id.trim());
-            }
-            if (descripcion != null && !descripcion.trim().isEmpty()) {
-                criteria.setDescripcion(descripcion.trim());
-            }
-            if (precioMin != null) {
-                criteria.setPvp3Min(precioMin);
-            }
-            if (precioMax != null) {
-                criteria.setPvp3Max(precioMax);
-            }
-            if (stockMin != null) {
-                criteria.setStockMin((double) stockMin);
-            }
-            if (stockMax != null) {
-                criteria.setStockMax((double) stockMax);
-            }
-          
+			if (id != null && !id.trim().isEmpty()) {
+				criteria.setArtigo(id.trim());
+			}
+			if (descripcion != null && !descripcion.trim().isEmpty()) {
+				criteria.setDescripcion(descripcion.trim());
+			}
+			if (precioMin != null) {
+				criteria.setPvp3Min(precioMin);
+			}
+			if (precioMax != null) {
+				criteria.setPvp3Max(precioMax);
+			}
+			if (stockMin != null) {
+				criteria.setStockMin((double) stockMin);
+			}
+			if (stockMax != null) {
+				criteria.setStockMax((double) stockMax);
+			}
 
-            logger.info("Buscando productos con criterios: id={}, descripcion={}, precioMin={}, precioMax={}, stockMin={}, stockMax={}, page={}, size={}",
-                id, descripcion, precioMin, precioMax, stockMin, stockMax, page, size);
+			if (familia != null && !familia.trim().isEmpty()) {
+				criteria.setFamiliaNombre(familia.trim());
+			}
 
-            Results<ProductoDTO> resultados = productoService.findBy(criteria, page, size);
+			logger.info(
+					"Buscando productos con criterios: id={}, descripcion={}, precioMin={}, precioMax={}, stockMin={}, stockMax={}, familia={}, page={}, size={}",
+					id, descripcion, precioMin, precioMax, stockMin, stockMax, familia, page, size);
 
-            if (resultados == null || resultados.getPage().isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                    .entity("No se encontraron productos con los criterios proporcionados.").build();
-            }
+			Results<ProductoDTO> resultados = productoService.findBy(criteria, page, size);
 
-            return Response.ok(resultados).build();
+			if (resultados == null || resultados.getPage().isEmpty()) {
+				return Response.status(Response.Status.NOT_FOUND)
+						.entity("No se encontraron productos con los criterios proporcionados.").build();
+			}
 
-        } catch (Exception e) {
-            logger.error("Error al buscar productos con criterios: {}", e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity("Error al buscar productos: " + e.getMessage()).build();
-        }
-    }
+			return Response.ok(resultados).build();
 
-
+		} catch (Exception e) {
+			logger.error("Error al buscar productos con criterios: {}", e.getMessage(), e);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+					.entity("Error al buscar productos: " + e.getMessage()).build();
+		}
+	}
 
 	@GET
 	@Path("/sync-soap")
