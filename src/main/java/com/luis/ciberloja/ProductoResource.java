@@ -97,8 +97,8 @@ public class ProductoResource {
 	public Response findByCriteria(@QueryParam("id") String id, @QueryParam("descripcion") String descripcion,
 			@QueryParam("precioMin") Double precioMin, @QueryParam("precioMax") Double precioMax,
 			@QueryParam("stockMin") Integer stockMin, @QueryParam("stockMax") Integer stockMax,
-			@QueryParam("familia") String familia,
-			@QueryParam("page") @DefaultValue("1") int page, @QueryParam("size") @DefaultValue("30") int size) {
+			@QueryParam("familia") String familia, @QueryParam("page") @DefaultValue("1") int page,
+			@QueryParam("size") @DefaultValue("30") int size) {
 
 		try {
 			if (page < 1 || size < 1) {
@@ -152,6 +152,39 @@ public class ProductoResource {
 	}
 
 	@GET
+	@Path("/searchDestaques")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Operation(summary = "Buscar productos por destacados", operationId = "findProductosByDestaques", description = "Este endpoint permite buscar productos destacados", responses = {
+			@ApiResponse(responseCode = "200", description = "Productos encontrados", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Results.class))),
+			@ApiResponse(responseCode = "400", description = "Criterios de búsqueda no proporcionados o inválidos"),
+			@ApiResponse(responseCode = "404", description = "No se encontraron productos con los criterios proporcionados"),
+			@ApiResponse(responseCode = "500", description = "Error interno en el servidor al procesar la búsqueda") })
+	public Response findByDestaques(@QueryParam("page") @DefaultValue("1") int page,
+			@QueryParam("size") @DefaultValue("30") int size) {
+
+		try {
+			if (page < 1 || size < 1) {
+				return Response.status(Response.Status.BAD_REQUEST)
+						.entity("Parámetros de paginación inválidos: page y size deben ser mayores que 0.").build();
+			}
+
+			Results<ProductoDTO> resultados = productoService.findByDestaques(page, size);
+
+			if (resultados == null || resultados.getPage().isEmpty()) {
+				return Response.status(Response.Status.NOT_FOUND)
+						.entity("No se encontraron productos con los criterios proporcionados.").build();
+			}
+
+			return Response.ok(resultados).build();
+
+		} catch (Exception e) {
+			logger.error("Error al buscar productos con criterios: {}", e.getMessage(), e);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+					.entity("Error al buscar productos: " + e.getMessage()).build();
+		}
+	}
+
+	@GET
 	@Path("/sync-soap")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Operation(summary = "Buscar un producto", operationId = "syncProductosFromSoap", description = "Este endpoint permite buscar un producto del sistema ", responses = {
@@ -162,12 +195,12 @@ public class ProductoResource {
 			@QueryParam("utilizador") String utilizador, @QueryParam("password") String password,
 			@QueryParam("descricao") String nombre, @QueryParam("PVP3Min") Double precioMin,
 			@QueryParam("PVP3Max") Double precioMax, @QueryParam("StockMin") Double stockMin,
-			@QueryParam("StockMax") Double stockMax) {
+			@QueryParam("StockMax") Double stockMax, @QueryParam("Destaques") Boolean destaques) {
 
 		try {
 			logger.info(
-					"Iniciando sincronización de productos desde el servicio SOAP con filtros: nombre={}, precioMin={}, precioMax={}, stockMin={}, stockMax={}",
-					nombre, precioMin, precioMax, stockMin, stockMax);
+					"Iniciando sincronización de productos desde el servicio SOAP con filtros: nombre={}, precioMin={}, precioMax={}, stockMin={}, stockMax={}, destaques={}",
+					nombre, precioMin, precioMax, stockMin, stockMax, destaques);
 
 			// Validate credentials
 			if (empresa == null || utilizador == null || password == null || empresa.trim().isEmpty()
@@ -202,7 +235,10 @@ public class ProductoResource {
 					.filter(p -> precioMin == null || p.getPrecio() >= precioMin)
 					.filter(p -> precioMax == null || p.getPrecio() <= precioMax)
 					.filter(p -> stockMin == null || p.getStockDisponible() >= stockMin)
-					.filter(p -> stockMax == null || p.getStockDisponible() <= stockMax).collect(Collectors.toList());
+					.filter(p -> stockMax == null || p.getStockDisponible() <= stockMax)
+					.filter(p -> destaques == null || p.getDestaques() == destaques)
+
+					.collect(Collectors.toList());
 
 			// Check if products were found
 			if (productos.isEmpty()) {

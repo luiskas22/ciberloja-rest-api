@@ -86,7 +86,7 @@ public class PedidoResource {
 			@QueryParam("fechaHasta") String fechaHasta, @QueryParam("precioDesde") Double precioDesde,
 			@QueryParam("precioHasta") Double precioHasta, @QueryParam("clienteId") Long clienteId,
 			@QueryParam("tipoEstadoPedidoId") Integer tipoEstadoPedidoId, @QueryParam("productoId") String productoId,
-			@QueryParam("descripcion") String descripcion) {
+			@QueryParam("descripcion") String descripcion, @QueryParam("tipoEntregaId") Integer tipoEntregaId) {
 
 		PedidoCriteria pedidoCriteria = new PedidoCriteria();
 		pedidoCriteria.setId(id);
@@ -96,6 +96,7 @@ public class PedidoResource {
 		pedidoCriteria.setTipoEstadoPedidoId(tipoEstadoPedidoId);
 		pedidoCriteria.setProductoId(productoId);
 		pedidoCriteria.setDescripcionProducto(descripcion);
+		pedidoCriteria.setTipoEntregaId(tipoEntregaId);
 
 		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
 		try {

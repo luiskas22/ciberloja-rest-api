@@ -103,4 +103,60 @@ public class EmpleadoResource {
 		}
 	}
 
+	@POST
+	@Path("/create")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	@Operation(operationId = "createEmpleado", summary = "Crear un nuevo empleado", description = "Crea un nuevo empleado con los datos proporcionados", responses = {
+			@ApiResponse(responseCode = "200", description = "Empleado creado exitosamente", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EmpleadoDTO.class))),
+			@ApiResponse(responseCode = "400", description = "Datos de empleado inválidos o incompletos"),
+			@ApiResponse(responseCode = "409", description = "Conflicto: el empleado ya existe (e.g., DNI duplicado)"),
+			@ApiResponse(responseCode = "500", description = "Error interno del servidor") })
+	public Response createEmpleado(EmpleadoDTO empleado) {
+		logger.info("Intento de creación de empleado con datos: {}", empleado);
+
+		try {
+			// Validación de datos de entrada
+			if (empleado == null || StringUtils.isBlank(empleado.getNombre())
+					|| StringUtils.isBlank(empleado.getApellido1()) || StringUtils.isBlank(empleado.getDniNie())
+					|| StringUtils.isBlank(empleado.getPassword()) || empleado.getTipo_empleado_id() == null) {
+				logger.warn("Datos incompletos para crear empleado");
+				return Response.status(Response.Status.BAD_REQUEST).entity(
+						Map.of("error", "Nombre, apellido1, DNI/NIE, contraseña y tipo de empleado son requeridos"))
+						.build();
+			}
+
+			// Verificar si el empleado ya existe (por ejemplo, por DNI/NIE)
+			EmpleadoDTO existingEmpleado = empleadoService.findBy(empleado.getId());
+			if (existingEmpleado != null) {
+				logger.warn("Empleado con DNI/NIE {} ya existe", empleado.getDniNie());
+				return Response.status(Response.Status.CONFLICT)
+						.entity(Map.of("error", "Ya existe un empleado con el DNI/NIE proporcionado")).build();
+			}
+
+			// Crear la conexión y delegar la creación
+			Long empleadoId = empleadoService.registrar(empleado);
+			if (empleadoId == null) {
+				throw new ServiceException("No se pudo crear el empleado");
+			}
+
+			// Actualizar el ID en el DTO y eliminar información sensible antes de
+			// devolverlo
+			empleado.setId(empleadoId);
+			empleado.setPassword(null); // No devolver la contraseña
+
+			logger.info("Empleado creado exitosamente con ID: {}", empleadoId);
+
+			return Response.ok(empleado).build();
+
+		} catch (ServiceException e) {
+			logger.error("Error al crear el empleado: {}", e.getMessage(), e);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+					.entity(Map.of("error", "Error al crear el empleado: " + e.getMessage())).build();
+		} catch (Exception e) {
+			logger.error("Error inesperado al crear empleado: {}", e.getMessage(), e);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+					.entity(Map.of("error", "Error interno del servidor")).build();
+		}
+	}
 }
