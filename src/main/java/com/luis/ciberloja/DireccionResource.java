@@ -68,7 +68,8 @@ public class DireccionResource {
 			@ApiResponse(responseCode = "500", description = "Error en el proceso de creación") })
 	public Response create(DireccionDTO direccion) {
 		if (direccion == null || direccion.getNombreVia() == null || direccion.getDirVia() == null
-				|| direccion.getLocalidadId() == null) {
+				|| direccion.getFreguesiaId() == null || direccion.getConcelhoId() == null
+				|| direccion.getDistritoId() == null) {
 			return Response.status(Status.BAD_REQUEST).entity("Datos introducidos inválidos").build();
 		}
 
@@ -97,8 +98,9 @@ public class DireccionResource {
 			@ApiResponse(responseCode = "500", description = "Error en el proceso de actualización") })
 	public Response update(DireccionDTO direccion) {
 		// Validación inicial de los datos de entrada
-		if (direccion == null || direccion.getId() == null || direccion.getNombreVia() == null
-				|| direccion.getDirVia() == null || direccion.getLocalidadId() == null) {
+		if (direccion == null || direccion.getNombreVia() == null || direccion.getDirVia() == null
+				|| direccion.getFreguesiaId() == null || direccion.getConcelhoId() == null
+				|| direccion.getDistritoId() == null) {
 			return Response.status(Status.BAD_REQUEST).entity("Datos introducidos inválidos").build();
 		}
 
