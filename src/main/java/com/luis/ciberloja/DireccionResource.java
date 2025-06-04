@@ -1,12 +1,13 @@
 package com.luis.ciberloja;
 
+import java.util.List;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.luis.ciberloja.model.DireccionDTO;
 import com.luis.ciberloja.service.DireccionService;
 import com.luis.ciberloja.service.impl.DireccionServiceImpl;
-import com.luis.ciberloja.DataException;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -154,6 +155,32 @@ public class DireccionResource {
 			logger.error("Error en el proceso de eliminación de la dirección con ID " + id, e);
 			return Response.status(Status.BAD_GATEWAY).entity("Error en el proceso de eliminación de la dirección")
 					.build();
+		}
+	}
+
+	@GET
+	@Path("direcciones/{clienteId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Operation(summary = "Búsqueda de direcciones por ID de cliente", operationId = "findDireccionesByClienteId", description = "Recupera todas las direcciones asociadas a un cliente por su ID", responses = {
+			@ApiResponse(responseCode = "200", description = "Direcciones encontradas", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = DireccionDTO[].class))),
+			@ApiResponse(responseCode = "400", description = "ID de cliente no proporcionado"),
+			@ApiResponse(responseCode = "404", description = "No se encontraron direcciones para el cliente"),
+			@ApiResponse(responseCode = "500", description = "Error al recuperar las direcciones") })
+	public Response getDireccionesByClienteId(@PathParam("clienteId") Long clienteId) {
+		try {
+			if (clienteId == null) {
+				return Response.status(Status.BAD_REQUEST).entity("ID de cliente no proporcionado").build();
+			}
+			List<DireccionDTO> direcciones = direccionService.findByClienteId(clienteId);
+			if (direcciones == null || direcciones.isEmpty()) {
+				return Response.status(Status.NOT_FOUND)
+						.entity("No se encontraron direcciones para el cliente con ID " + clienteId).build();
+			}
+			return Response.status(Status.OK).entity(direcciones).build();
+		} catch (DataException e) {
+			logger.error("Error al buscar las direcciones del cliente con ID " + clienteId, e);
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("Ha ocurrido un error interno al buscar las direcciones.").build();
 		}
 	}
 }

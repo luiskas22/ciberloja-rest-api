@@ -97,7 +97,7 @@ public class PedidoResource {
 		pedidoCriteria.setProductoId(productoId);
 		pedidoCriteria.setDescripcionProducto(descripcion);
 		pedidoCriteria.setTipoEntregaId(tipoEntregaId);
-
+		
 		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
 		try {
 			if (fechaDesde != null) {
