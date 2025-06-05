@@ -164,7 +164,7 @@ public class PedidoResource {
 	}
 
 	@POST
-	@Path("/create")
+	@Path("/create") 
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	@Operation(operationId = "createPedido", summary = "Creación de un pedido", description = "Crea un pedido introduciendo todos los datos del mismo", responses = {
